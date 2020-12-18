@@ -93,27 +93,27 @@ public:
     int quit(int error);                        // called by thread before exiting
 
     bool find();                                // either unconfigured or configured device found
-    bool discover(QString deviceFilename);        // confirm CT is attached to device
+    bool discover(QString deviceFilename);      // confirm CT is attached to device
 
     // SET
     void setLoad(double load);                  // set the load to generate in ERGOMODE
-    void setGradient(double gradient);          // set the load to generate in SSMODE
-    void setBrakeCalibrationFactor(double calibrationFactor);     // Impacts relationship between brake setpoint and load
-    void setPowerScaleFactor(double calibrationFactor);         // Scales output power, so user can adjust to match hub or crank power meter
+    void setSimState(double resistanceNewtons, double speedKph, double gradient); // set the load to generate in SSMODE
+    void setBrakeCalibrationFactor(double calibrationFactor); // Impacts relationship between brake setpoint and load
+    void setPowerScaleFactor(double calibrationFactor);       // Scales output power, so user can adjust to match hub or crank power meter
     void setMode(int mode);
     void setWeight(double weight);                 // set the total weight of rider + bike in kg's
-    
-    int getMode();
-    double getGradient();
-    double getLoad();
-    double getBrakeCalibrationFactor();
-    double getPowerScaleFactor();
-    double getWeight();
-    
+
+    int    getMode() const;
+    double getGradient() const;
+    double getLoad() const;
+    double getBrakeCalibrationFactor() const;
+    double getPowerScaleFactor() const;
+    double getWeight() const;
+
     // GET TELEMETRY AND STATUS
     // direct access to class variables is not allowed because we need to use wait conditions
     // to sync data read/writes between the run() thread and the main gui thread
-    void getTelemetry(double &power, double &heartrate, double &cadence, double &speed, double &distance, int &buttons, int &steering, int &status);
+    void getTelemetry(double &powerWatts, double &heartrate, double &cadence, double &speedKph, double &distance, int &buttons, int &steering, int &status);
 
 private:
     void run();                                 // called by start to kick off the CT comtrol thread
@@ -135,26 +135,29 @@ private:
     //void unpackTelemetry(int &b1, int &b2, int &b3, int &buttons, int &type, int &value8, int &value12);
 
     // Mutex for controlling accessing private data
-    QMutex pvars;
+    mutable QMutex pvars;
 
-    // INBOUND TELEMETRY - all volatile since it is updated by the run() thread
-    volatile double devicePower;            // current output power in Watts
-    volatile double deviceHeartRate;        // current heartrate in BPM
-    volatile double deviceCadence;          // current cadence in RPM
-    volatile double deviceSpeed;            // current speed in KPH
-    volatile double deviceDistance;         // odometer in meters
-    volatile int    deviceButtons;          // Button status
-    volatile int    deviceStatus;           // Device status running, paused, disconnected
-    volatile int    deviceSteering;            // Steering angle
+    // INBOUND TELEMETRY - read & write requires lock since written by run() thread
+    double devicePowerWatts;       // current output power in Watts
+    double deviceHeartRate;        // current heartrate in BPM
+    double deviceCadence;          // current cadence in RPM
+    double deviceSpeedMS;          // current speed in Meters per second (derived from wheel speed)
+    double deviceWheelSpeed;       // current wheel speed from device
+    double deviceDistance;         // odometer in meters
+    int    deviceButtons;          // Button status
+    int    deviceStatus;           // Device status running, paused, disconnected
+    int    deviceSteering;         // Steering angle
     
-    // OUTBOUND COMMANDS - all volatile since it is updated by the GUI thread
-    volatile int mode;
-    volatile double load;
-    volatile double gradient;
-    volatile double brakeCalibrationFactor;
-    volatile double powerScaleFactor;
-    volatile double weight;
-    
+    // OUTBOUND COMMANDS read & write requires lock since written by gui() thread
+    int    mode;
+    double loadWatts;
+    double resistanceNewtons;      // load demanded by simulator
+    double simSpeedMS;             // simulator's speed, a speed to match if possible
+    double gradient;               // not used
+    double brakeCalibrationFactor;
+    double powerScaleFactor;
+    double weight;
+
     // i/o message holder
     uint8_t buf[64];
 
@@ -163,7 +166,7 @@ private:
 
     // raw device utils
     int rawWrite(uint8_t *bytes, int size); // unix!!
-    int rawRead(uint8_t *bytes, int size); // unix!!
+    int rawRead(uint8_t *bytes, int size);  // unix!!
 };
 
 #endif // _GC_Fortius_h

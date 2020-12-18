@@ -139,9 +139,9 @@ FortiusController::setLoad(double load)
 }
 
 void
-FortiusController::setGradient(double grade)
+FortiusController::setSimState(double resistanceNewtons, double speedKph, double gradient)
 {
-    myFortius->setGradient(grade);
+    myFortius->setSimState(resistanceNewtons, speedKph, gradient);
 }
 
 void
