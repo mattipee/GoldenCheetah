@@ -108,7 +108,7 @@ void MonarkController::setLoad(double load)
     m_monark->setLoad(load);
 }
 
-void MonarkController::setGradient(double gradient)
+void MonarkController::setGradient(double gradient, double resistanceWatts)
 {
     // Repurpose gradient as kp for Monarks
     m_monark->setKp(gradient);

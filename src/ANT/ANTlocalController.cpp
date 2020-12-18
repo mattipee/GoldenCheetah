@@ -140,7 +140,7 @@ ANTlocalController::setLoad(double x) {
 }
 
 void
-ANTlocalController::setGradient(double x) {
+ANTlocalController::setGradient(double x, double rw) {
     myANTlocal->setGradient(x);
 }
 

@@ -47,7 +47,7 @@ public:
     void setDevice(QString);
 
     void setLoad(double);
-    void setGradient(double);
+    void setGradient(double, double);
     void setMode(int);
     void setWindSpeed(double);
     void setWeight(double);

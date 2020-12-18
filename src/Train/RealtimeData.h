@@ -42,7 +42,7 @@ public:
                       Rf, RMV, VO2, VCO2, RER, TidalVolume, FeO2,
                       AvgWatts, AvgSpeed, AvgCadence, AvgHeartRate,
                       AvgWattsLap, AvgSpeedLap, AvgCadenceLap, AvgHeartRateLap,
-                      VirtualSpeed, AltWatts, LRBalance, LapTimeRemaining,
+                      VirtualSpeed, ResistanceWatts, AltWatts, LRBalance, LapTimeRemaining,
                       LeftTorqueEffectiveness, RightTorqueEffectiveness,
                       LeftPedalSmoothness, RightPedalSmoothness, Slope, 
                       LapDistance, LapDistanceRemaining, ErgTimeRemaining,
@@ -67,6 +67,7 @@ public:
     void setSpeed(double speed);
     void setWbal(double speed);
     void setVirtualSpeed(double speed);
+    void setResistanceWatts(double ew);
     void setWheelRpm(double wheelRpm, bool fMarkTimeSample = false);
     void setCadence(double aCadence);
     void setLoad(double load);
@@ -125,6 +126,7 @@ public:
     double getSpeed() const;
     double getWbal() const;
     double getVirtualSpeed() const;
+    double getResistanceWatts() const;
     double getWheelRpm() const;
     std::chrono::high_resolution_clock::time_point getWheelRpmSampleTime() const;
     double getCadence() const;
@@ -184,6 +186,7 @@ private:
     double lapDistance;
     double lapDistanceRemaining;
     double virtualSpeed;
+    double resistanceWatts;
     double wbal;
     double hhb, o2hb;
     double rer;
