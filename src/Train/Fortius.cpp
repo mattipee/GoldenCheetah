@@ -141,6 +141,10 @@ void Fortius::setGradient(double gradient, double resistanceWatts)
 {
     if (gradient > 20) gradient = 20;
     if (gradient < -5) gradient = -5;
+
+    // Set similar caps as implemented in setLoad().
+    resistanceWatts = std::max<double>(50., resistanceWatts);
+    resistanceWatts = std::min<double>(1000., resistanceWatts);
     
     Lock lock(pvars);
     this->gradient = gradient;
