@@ -141,7 +141,8 @@ private:
     double devicePower;            // current output power in Watts
     double deviceHeartRate;        // current heartrate in BPM
     double deviceCadence;          // current cadence in RPM
-    double deviceSpeed;            // current speed in KPH
+    double deviceSpeed;            // current speed in KPH (derived from wheel speed)
+    double deviceWheelSpeed;       // current wheel speed from device
     double deviceDistance;         // odometer in meters
     int    deviceButtons;          // Button status
     int    deviceStatus;           // Device status running, paused, disconnected

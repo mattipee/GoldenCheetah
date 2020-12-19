@@ -60,7 +60,7 @@ public:
 Fortius::Fortius(QObject *parent) : QThread(parent)
 {
     
-    devicePower = deviceHeartRate = deviceCadence = deviceSpeed = 0.00;
+    devicePower = deviceHeartRate = deviceCadence = deviceSpeed = deviceWheelSpeed = 0.00;
     mode = FT_IDLE;
     load = DEFAULT_LOAD;
     gradient = DEFAULT_GRADIENT;
@@ -307,6 +307,7 @@ void Fortius::run()
     double curHeartRate;                  // current heartrate in BPM
     double curCadence;                    // current cadence in RPM
     double curSpeed;                      // current speed in KPH
+    double curWheelSpeed;                 // current wheel speed from trainer
     // UNUSED double curDistance;                    // odometer?
     int curButtons;                       // Button status
     int curSteering;                    // Angle of steering controller
@@ -329,6 +330,7 @@ void Fortius::run()
         curHeartRate = this->deviceHeartRate = 0;
         curCadence = this->deviceCadence = 0;
         curSpeed = this->deviceSpeed = 0;
+        curWheelSpeed = this->deviceWheelSpeed = 0;
         // UNUSED curDistance = this->deviceDistance = 0;
         curSteering = this->deviceSteering = 0;
         curButtons = this->deviceButtons = 0;
@@ -421,7 +423,8 @@ void Fortius::run()
 				
                 // speed
 
-                curSpeed = 1.3f * (double)(qFromLittleEndian<quint16>(&buf[32])) / (3.6f * 100.00f);
+                curWheelSpeed = (double)(qFromLittleEndian<quint16>(&buf[32]));
+                curSpeed = 1.3f * curWheelSpeed / (3.6f * 100.00f);
 
                 // If this is torque, we could also compute power from distance and time				
                 curPower = qFromLittleEndian<qint16>(&buf[38]) * curSpeed / 448.5;
@@ -443,6 +446,7 @@ void Fortius::run()
                 {
                     Lock lock(pvars);
                     deviceSpeed = curSpeed;
+                    deviceWheelSpeed = curWheelSpeed;
                     deviceCadence = curCadence;
                     deviceHeartRate = curHeartRate;
                     devicePower = curPower;
@@ -531,12 +535,20 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     double weight = this->weight;
     double brakeCalibrationFactor = this->brakeCalibrationFactor;
     pvars.unlock();
-    
-    if (mode == FT_ERGOMODE || mode == FT_SSMODE)
+
+    double resistance = load * brakeCalibrationFactor / this->deviceWheelSpeed;
+
+    if (this->deviceSpeed <= 10 && resistance >= 6000) {
+        resistance = 1500 + (this->deviceSpeed * 300);
+    }
+
+    resistance = std::min<double>(32767, resistance);
+
+    if (mode == FT_ERGOMODE)
     {
 		//qDebug() << "send load " << load;
 		
-        qToLittleEndian<int16_t>((int16_t)(13 * load), &ERGO_Command[4]);
+        qToLittleEndian<int16_t>((int16_t)resistance, &ERGO_Command[4]);
         ERGO_Command[6] = pedalSensor;
         
         qToLittleEndian<int16_t>((int16_t)(130 * brakeCalibrationFactor + 1040), &ERGO_Command[10]);
@@ -545,7 +557,7 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     }
     else if (mode == FT_SSMODE)
     {
-        qToLittleEndian<int16_t>((int16_t)(650 * gradient), &SLOPE_Command[4]);
+        qToLittleEndian<int16_t>((int16_t)resistance, &SLOPE_Command[4]);
         SLOPE_Command[6] = pedalSensor;
         SLOPE_Command[9] = (unsigned int)weight;
         
