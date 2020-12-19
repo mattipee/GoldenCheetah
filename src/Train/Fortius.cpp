@@ -536,7 +536,13 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     double brakeCalibrationFactor = this->brakeCalibrationFactor;
     pvars.unlock();
 
-    double resistance = load * brakeCalibrationFactor / this->deviceWheelSpeed;
+    // From switchabl on FortAnt project, based on 
+    //  https://github.com/totalreverse/ttyT1941/wiki#newer-usb-1264-bytes-protocol
+    //
+    // Power resistance factor is 137 * 289.75 * 3.6 ~= 142905
+    static const double s_powerResistanceFactor = 142905;
+
+    double resistance = load * s_powerResistanceFactor / this->deviceWheelSpeed;
 
     if (this->deviceSpeed <= 10 && resistance >= 6000) {
         resistance = 1500 + (this->deviceSpeed * 300);
