@@ -46,6 +46,12 @@ const static uint8_t slope_command[12] = {
         0x01, 0x08, 0x01, 0x00, 0x6c, 0x01, 0x00, 0x00, 0x02, 0x48, 0x10, 0x04
 };
 
+// From switchabl on FortAnt project, based on 
+//  https://github.com/totalreverse/ttyT1941/wiki#newer-usb-1264-bytes-protocol
+//
+// Power resistance factor is 137 * 289.75 * 3.6 ~= 142905
+static const double s_powerResistanceFactor = 142905;
+
 class Lock
 {
     QMutex& mutex;
@@ -424,10 +430,10 @@ void Fortius::run()
                 // speed
 
                 curWheelSpeed = (double)(qFromLittleEndian<quint16>(&buf[32]));
-                curSpeed = 1.3f * curWheelSpeed / (3.6f * 100.00f);
+                curSpeed = curWheelSpeed / ((3.6 * 100.) / 1.3);
 
-                // If this is torque, we could also compute power from distance and time				
-                curPower = qFromLittleEndian<qint16>(&buf[38]) * curSpeed / 448.5;
+                // Power is torque * wheelspeed - adjusted by device resistance factor.
+                curPower = (qFromLittleEndian<qint16>(&buf[38]) * curWheelSpeed) / s_powerResistanceFactor;
                 if (curPower < 0.0) curPower = 0.0;  // brake power can be -ve when coasting. 
                 
                 // average power over last 10 readings
@@ -536,19 +542,20 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     double brakeCalibrationFactor = this->brakeCalibrationFactor;
     pvars.unlock();
 
-    // From switchabl on FortAnt project, based on 
-    //  https://github.com/totalreverse/ttyT1941/wiki#newer-usb-1264-bytes-protocol
+    double resistance = load * (s_powerResistanceFactor / this->deviceWheelSpeed);
+
+    // Resistance Filter.
     //
-    // Power resistance factor is 137 * 289.75 * 3.6 ~= 142905
-    static const double s_powerResistanceFactor = 142905;
-
-    double resistance = load * s_powerResistanceFactor / this->deviceWheelSpeed;
-
-    if (this->deviceSpeed <= 10 && resistance >= 6000) {
+    // The fortius power range only applies at high rpm. The device cannot
+    // hold against the torque of high power at low rpm.
+    //
+    // This line caps power at low trainer speed, if you want more power
+    // you should use a higher gear to drive trainer faster.
+    if (this->deviceSpeed <= 10 && resistance >= 6000) 
+    {
         resistance = 1500 + (this->deviceSpeed * 300);
     }
-
-    resistance = std::min<double>(32767, resistance);
+    resistance = std::min<double>(SHRT_MAX, resistance);
 
     if (mode == FT_ERGOMODE)
     {
