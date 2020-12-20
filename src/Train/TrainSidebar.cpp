@@ -1902,7 +1902,7 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
 
             // Compute resisting watts needed for current slope and speed. This can be used to
             // drive resistance of trainers that only support ergo mode.
-            double resistanceWatts = (status & RT_MODE_SLOPE)
+            resistanceWatts = (status & RT_MODE_SLOPE)
                 ? bicycle.WattsForV(BicycleSimState(rtData), displaySpeed / 3.6)
                 : displayPower;
             rtData.setResistanceWatts(resistanceWatts);
