@@ -444,7 +444,7 @@ usb_dev_handle* LibUsb::OpenFortius()
                                 if (rc < 0) {
                                     qDebug()<<"usb_claim_interface Error: "<< usb_strerror();
                                 } else {
-                                    if (OperatingSystem != OSX) {
+                                    if (OperatingSystem != OSX && OperatingSystem != LINUX) {
                                         // fails on Mac OS X, we don't actually need it anyway
                                         rc = usb_set_altinterface(udev, alternate);
                                         if (rc < 0) qDebug()<<"usb_set_altinterface Error: "<< usb_strerror();
