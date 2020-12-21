@@ -102,7 +102,7 @@ public:
 
     // only relevant for Computrainer like devices
     virtual void setLoad(double) { return; }
-    virtual void setGradient(double) { return; }
+    virtual void setGradient(double, double) { return; }
     virtual void setMode(int) { return; }
     virtual void setWindSpeed(double) { return; }
     virtual void setWeight(double) { return; }

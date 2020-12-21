@@ -261,7 +261,7 @@ void BT40Controller::setLoad(double l)
   }
 }
 
-void BT40Controller::setGradient(double g) 
+void BT40Controller::setGradient(double g, double rw) 
 {
   gradient = g;
   for (auto* dev: devices) {

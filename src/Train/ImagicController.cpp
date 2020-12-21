@@ -203,7 +203,7 @@ ImagicController::setLoad(double load)
 }
 
 void
-ImagicController::setGradient(double grade)
+ImagicController::setGradient(double grade, double resistanceWatts)
 {
     myImagic->setGradient(grade);
 }

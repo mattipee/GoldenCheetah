@@ -47,7 +47,7 @@ public:
     void pushRealtimeData(RealtimeData &rtData);
     
     void setLoad(double);
-    void setGradient(double);
+    void setGradient(double, double);
     void setMode(int) { return ; }
 };
 
