@@ -220,7 +220,7 @@ FortiusController::getCalibrationZeroOffset()
             {
                 calibrationState = CALIBRATION_STATE_SUCCESS;
                 myFortius->setMode(FT_IDLE);
-                myFortius->setCalibrationValue(calVal);
+                myFortius->setCalibrationValue(-calVal);
             }
         }
         break;
