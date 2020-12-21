@@ -79,7 +79,7 @@ FortiusController::getRealtimeData(RealtimeData &rtData)
     // Added Distance and Steering here but yet to RealtimeData
 
     int Buttons, Status, Steering;
-    double Power, HeartRate, Cadence, Speed, Distance;
+    double Power, Resistance, HeartRate, Cadence, Speed, Distance;
 
     if(!myFortius->isRunning())
     {
@@ -88,7 +88,7 @@ FortiusController::getRealtimeData(RealtimeData &rtData)
         return;
     }
     // get latest telemetry
-    myFortius->getTelemetry(Power, HeartRate, Cadence, Speed, Distance, Buttons, Steering, Status);
+    myFortius->getTelemetry(Power, Resistance, HeartRate, Cadence, Speed, Distance, Buttons, Steering, Status);
 
     //
     // PASS BACK TELEMETRY
@@ -116,7 +116,7 @@ FortiusController::getRealtimeData(RealtimeData &rtData)
 
     // ADJUST LOAD
     if ((Buttons&FT_PLUS)) parent->Higher();
-    
+
     if ((Buttons&FT_MINUS)) parent->Lower();
 
     // LAP/INTERVAL
@@ -150,7 +150,7 @@ FortiusController::setMode(int mode)
     if (mode == RT_MODE_ERGO) mode = FT_ERGOMODE;
     else if (mode == RT_MODE_SPIN) mode = FT_SSMODE;
     else mode = FT_IDLE;
-    
+
     myFortius->setMode(mode);
 }
 
@@ -160,3 +160,100 @@ FortiusController::setWeight(double weight)
     myFortius->setWeight(weight);
 }
 
+// TODO check my use of state machine
+
+uint8_t
+FortiusController::getCalibrationType()
+{
+    return CALIBRATION_TYPE_ZERO_OFFSET;
+}
+
+double
+FortiusController::getCalibrationTargetSpeed()
+{
+    return 20;
+}
+
+uint8_t
+FortiusController::getCalibrationState()
+{
+    return calibrationState;
+}
+
+void
+FortiusController::setCalibrationState(uint8_t state)
+{
+    calibrationState = state;
+    if (calibrationState == CALIBRATION_STATE_PENDING)
+    {
+        myFortius->setMode(FT_CALIBRATE);
+        calibrationState = CALIBRATION_STATE_STARTING;
+    }
+    return;
+}
+
+uint16_t
+FortiusController::getCalibrationZeroOffset()
+{
+    // TODO is this the right place to implement the stabilisation check?
+    switch (calibrationState)
+    {
+        case CALIBRATION_STATE_STARTING:
+        {
+            myFortius->setMode(FT_CALIBRATE);
+            if (readCurrentSpeedValue() > 0.0)
+            {
+                calibrationState = CALIBRATION_STATE_STARTED;
+            }
+        }
+        break;
+
+        case CALIBRATION_STATE_STARTED:
+        {
+            // FIXME ... a static loop counter and 100 iterations is OBVIOUSLY wrong
+            // TODO implement stabilisation check (eg threshold on the min/max of most recent 20 values)
+
+            double calVal = readCurrentCalibrationValue();
+
+            static int c=0;
+            if (++c > 100)//readCurrentSpeedValue() > 19.9)
+            {
+                calibrationState = CALIBRATION_STATE_SUCCESS;
+                myFortius->setMode(FT_IDLE);
+                myFortius->setCalibrationValue(calVal);
+            }
+        }
+        break;
+
+        default: break;
+    }
+    return 0;
+}
+
+void
+FortiusController::resetCalibrationState()
+{
+    calibrationState = CALIBRATION_STATE_IDLE;
+    myFortius->setMode(FT_IDLE);
+
+    return;
+}
+
+// FIXME dirty pair of functions - refactor
+double
+FortiusController::readCurrentCalibrationValue()
+{
+    double power, resistance, heartrate, cadence, speed, distance;
+    int buttons, steering, status;
+    myFortius->getTelemetry(power, resistance, heartrate, cadence, speed, distance, buttons, steering, status);
+    return resistance;
+}
+
+double
+FortiusController::readCurrentSpeedValue()
+{
+    double power, resistance, heartrate, cadence, speed, distance;
+    int buttons, steering, status;
+    myFortius->getTelemetry(power, resistance, heartrate, cadence, speed, distance, buttons, steering, status);
+    return speed;
+}

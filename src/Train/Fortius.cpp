@@ -18,7 +18,6 @@
 
 #include "Fortius.h"
 #include "MultiRegressionizer.h"
-
 //
 // Outbound control message has the format:
 // Byte          Value / Meaning
@@ -47,7 +46,12 @@ const static uint8_t slope_command[12] = {
         0x01, 0x08, 0x01, 0x00, 0x6c, 0x01, 0x00, 0x00, 0x02, 0x48, 0x10, 0x04
 };
 
-// From switchabl on FortAnt project, based on 
+const static uint8_t calibrate_command[12] = {
+     // 0     1     2     3     4     5     6     7    8      9     10    11
+        0x01, 0x08, 0x01, 0x00, 0xa2, 0x15, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00
+};
+
+// From switchabl on FortAnt project, based on
 //  https://github.com/totalreverse/ttyT1941/wiki#newer-usb-1264-bytes-protocol
 //
 // Power resistance factor is 137 * 289.75 * 3.6 ~= 142905
@@ -60,7 +64,7 @@ public:
     Lock(QMutex& m) : mutex(m) { mutex.lock(); }
     ~Lock() { mutex.unlock(); }
 };
-    
+
 const PolyFit<double>* GetFortiusUpperPowerLimitFit(unsigned maxOrder) {
 
 #if 1
@@ -137,8 +141,8 @@ double FortiusUpperPowerLimit(double deviceSpeedKph, double safetyRange)
  * ---------------------------------------------------------------------- */
 Fortius::Fortius(QObject *parent) : QThread(parent)
 {
-    
-    devicePower = deviceHeartRate = deviceCadence = deviceSpeed = deviceWheelSpeed = 0.00;
+
+    devicePower = deviceResistance = deviceHeartRate = deviceCadence = deviceSpeed = deviceWheelSpeed = 0.00;
     mode = FT_IDLE;
     load = DEFAULT_LOAD;
     gradient = DEFAULT_GRADIENT;
@@ -156,6 +160,7 @@ Fortius::Fortius(QObject *parent) : QThread(parent)
      */
     memcpy(ERGO_Command, ergo_command, 12);
     memcpy(SLOPE_Command, slope_command, 12);
+    memcpy(CALIBRATE_Command, calibrate_command, 12);
 
     // for interacting over the USB port
     usb2 = new LibUsb(TYPE_FORTIUS);
@@ -187,7 +192,7 @@ void Fortius::setPowerScaleFactor(double powerScaleFactor)
 {
     if (powerScaleFactor < 0.8) powerScaleFactor = 0.8;
     if (powerScaleFactor > 1.2) powerScaleFactor = 1.2;
-    
+
     Lock lock(pvars);
     this->powerScaleFactor = powerScaleFactor;
 }
@@ -198,9 +203,15 @@ void Fortius::setWeight(double weight)
     // need to apply range as same byte used to signify erg mode
     if (weight < 50) weight = 50;
     if (weight > 120) weight = 120;
-        
+
     Lock lock(pvars);
     this->weight = weight;
+}
+
+void Fortius::setCalibrationValue(uint16_t val)
+{
+        qToLittleEndian<int16_t>(val, &ERGO_Command[10]);
+        qToLittleEndian<int16_t>(val, &SLOPE_Command[10]);
 }
 
 // Load in watts when in power mode
@@ -221,10 +232,11 @@ void Fortius::setGradient(double gradient, double resistanceWatts)
 /* ----------------------------------------------------------------------
  * GET
  * ---------------------------------------------------------------------- */
-void Fortius::getTelemetry(double &power, double &heartrate, double &cadence, double &speed, double &distance, int &buttons, int &steering, int &status)
+void Fortius::getTelemetry(double &power, double &resistance, double &heartrate, double &cadence, double &speed, double &distance, int &buttons, int &steering, int &status)
 {
     Lock lock(pvars);
     power = devicePower;
+    resistance = deviceResistance;
     heartrate = deviceHeartRate;
     cadence = deviceCadence;
     speed = deviceSpeed;
@@ -232,11 +244,11 @@ void Fortius::getTelemetry(double &power, double &heartrate, double &cadence, do
     buttons = deviceButtons;
     steering = deviceSteering;
     status = deviceStatus;
-    
-    // work around to ensure controller doesn't miss button press. 
+
+    // work around to ensure controller doesn't miss button press.
     // The run thread will only set the button bits, they don't get
     // reset until the ui reads the device state
-    deviceButtons = 0; 
+    deviceButtons = 0;
 }
 
 int Fortius::getMode() const
@@ -370,6 +382,7 @@ void Fortius::run()
 
     // variables for telemetry, copied to fields on each brake update
     double curPower;                      // current output power in Watts
+    double curResistance;                 // current resistance in ~1/137 N
     double curHeartRate;                  // current heartrate in BPM
     double curCadence;                    // current cadence in RPM
     double curSpeed;                      // current speed in KPH
@@ -385,14 +398,15 @@ void Fortius::run()
     int powerhist[10];     // last 10 values received
     int powertot=0;        // running total
     int powerindex=0;      // index into the powerhist array
-    for (int i=0; i<10; i++) powerhist[i]=0; 
-                                        
+    for (int i=0; i<10; i++) powerhist[i]=0;
+
     // initialise local cache & main vars
     {
         Lock lock(pvars);
 
         // UNUSED curStatus = this->deviceStatus;
         curPower = this->devicePower = 0;
+        curResistance = this->deviceResistance = 0;
         curHeartRate = this->deviceHeartRate = 0;
         curCadence = this->deviceCadence = 0;
         curSpeed = this->deviceSpeed = 0;
@@ -418,20 +432,19 @@ void Fortius::run()
     while(1) {
 
         if (isDeviceOpen == true) {
+            int rc = sendRunCommand(pedalSensor) ;
+            if (rc < 0) {
+                qDebug() << "usb write error " << rc;
+                // send failed - ouch!
+                closePort(); // need to release that file handle!!
+                quit(4);
+                return; // couldn't write to the device
+            }
 
-			int rc = sendRunCommand(pedalSensor) ;
-			if (rc < 0) {
-				qDebug() << "usb write error " << rc;
-				// send failed - ouch!
-				closePort(); // need to release that file handle!!
-				quit(4);
-        		return; // couldn't write to the device
-			}
-			
             int actualLength = readMessage();
-			if (actualLength < 0) {
-				qDebug() << "usb read error " << actualLength;
-			}
+            if (actualLength < 0) {
+                qDebug() << "usb read error " << actualLength;
+            }
             if (actualLength >= 24) {
 
                 //----------------------------------------------------------------
@@ -461,13 +474,13 @@ void Fortius::run()
                 // buf[44, 45] cadence
                 // buf[46] is 0x02 when active, 0x00 at the end
                 // buf[47] varies even when the system is idle
-                
+
                 // buttons
                 curButtons = buf[13];
 
                 // steering angle
                 curSteering = buf[18] | (buf[19] << 8);
-                
+
                 // update public fields
                 {
                     Lock lock(pvars);
@@ -479,33 +492,34 @@ void Fortius::run()
                 // brake status status&0x04 == stopping wheel
                 //              status&0x01 == brake on
                 //curBrakeStatus = buf[46?];
-                
+
                 // pedal sensor is 0x01 when cycling
                 pedalSensor = buf[42];
-                
+
                 // UNUSED curDistance = (buf[28] | (buf[29] << 8) | (buf[30] << 16) | (buf[31] << 24)) / 16384.0;
 
                 curCadence = buf[44];
-				
-                // speed
+
+               // speed
 
                 curWheelSpeed = (double)(qFromLittleEndian<quint16>(&buf[32]));
                 curSpeed = curWheelSpeed / ((3.6 * 100.) / 1.3);
 
                 // Power is torque * wheelspeed - adjusted by device resistance factor.
-                curPower = (qFromLittleEndian<qint16>(&buf[38]) * curWheelSpeed) / s_powerResistanceFactor;
-                if (curPower < 0.0) curPower = 0.0;  // brake power can be -ve when coasting. 
-                
+                curResistance = (qFromLittleEndian<qint16>(&buf[38]));
+                curPower = curResistance * curWheelSpeed / s_powerResistanceFactor;
+                if (mode != FT_CALIBRATE && curPower < 0.0) curPower = 0.0;  // brake power can be -ve when coasting.
+
                 // average power over last 10 readings
                 powertot += curPower;
                 powertot -= powerhist[powerindex];
                 powerhist[powerindex] = curPower;
 
                 curPower = powertot / 10;
-                powerindex = (powerindex == 9) ? 0 : powerindex+1; 
+                powerindex = (powerindex == 9) ? 0 : powerindex+1;
 
                 curPower *= powerScaleFactor; // apply scale factor
-                
+
                 curHeartRate = buf[12];
 
                 // update public fields
@@ -516,6 +530,7 @@ void Fortius::run()
                     deviceCadence = curCadence;
                     deviceHeartRate = curHeartRate;
                     devicePower = curPower;
+                    deviceResistance = curResistance;
                 }
             }
         }
@@ -531,16 +546,16 @@ void Fortius::run()
         /* time to shut up shop */
         if (!(curstatus&FT_RUNNING)) {
             // time to stop!
-            
+
             sendCloseCommand();
-            
+
             closePort(); // need to release that file handle!!
             quit(0);
             return;
         }
 
         if ((curstatus&FT_PAUSED) && isDeviceOpen == true) {
-        
+
             closePort();
             isDeviceOpen = false;
 
@@ -550,13 +565,13 @@ void Fortius::run()
                 quit(2);
                 return; // open failed!
             }
-            isDeviceOpen = true;        
+            isDeviceOpen = true;
             sendOpenCommand();
-                        
+
             timer.restart();
         }
 
-        
+
         // The controller updates faster than the brake. Setting this to a low value (<50ms) increases the frequency of controller
         // only packages (24byte). Tacx software uses 100ms.
         msleep(50);
@@ -575,19 +590,27 @@ int Fortius::sendOpenCommand()
 {
 
     uint8_t open_command[] = {0x02,0x00,0x00,0x00};
-    
+
     int retCode = rawWrite(open_command, 4);
-	//qDebug() << "usb status " << retCode;
-	return retCode;
+    //qDebug() << "usb status " << retCode;
+    return retCode;
 }
 
 int Fortius::sendCloseCommand()
 {
     uint8_t close_command[] = {0x01,0x08,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x52,0x10,0x04};
-    
+
     int retCode = rawWrite(close_command, 12);
-	//qDebug() << "usb status " << retCode;
-	return retCode;
+    //qDebug() << "usb status " << retCode;
+    return retCode;
+}
+
+int Fortius::sendCalibrateCommand()
+{
+
+    int retCode = rawWrite(CALIBRATE_Command, 12);
+    //qDebug() << "usb status " << retCode;
+    return retCode;
 }
 
 int Fortius::sendRunCommand(int16_t pedalSensor)
@@ -619,7 +642,7 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     //
     // This line caps power at low trainer speed, if you want more power
     // you should use a higher gear to drive trainer faster.
-    if (this->deviceSpeed <= 10 && resistance >= 6000) 
+    if (this->deviceSpeed <= 10 && resistance >= 6000)
     {
         resistance = 1500 + (this->deviceSpeed * 300);
     }
@@ -628,13 +651,13 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
 
     if (mode == FT_ERGOMODE)
     {
-		//qDebug() << "send load " << load;
-		
+        //qDebug() << "send load " << load;
+
         qToLittleEndian<int16_t>((int16_t)resistance, &ERGO_Command[4]);
         ERGO_Command[6] = pedalSensor;
-        
-        qToLittleEndian<int16_t>((int16_t)(130 * brakeCalibrationFactor + 1040), &ERGO_Command[10]);
-                
+
+        // REMOVE qToLittleEndian<int16_t>((int16_t)(130 * brakeCalibrationFactor + 1040), &ERGO_Command[10]);
+
         retCode = rawWrite(ERGO_Command, 12);
     }
     else if (mode == FT_SSMODE)
@@ -642,9 +665,9 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
         qToLittleEndian<int16_t>((int16_t)resistance, &SLOPE_Command[4]);
         SLOPE_Command[6] = pedalSensor;
         SLOPE_Command[9] = (unsigned int)weight;
-        
-        qToLittleEndian<int16_t>((int16_t)(130 * brakeCalibrationFactor + 1040), &SLOPE_Command[10]);
-        
+
+        // REMOVE qToLittleEndian<int16_t>((int16_t)(130 * brakeCalibrationFactor + 1040), &SLOPE_Command[10]);
+
         retCode = rawWrite(SLOPE_Command, 12);
         // qDebug() << "Send Gradient " << gradient << ", Weight " << weight << ", Command " << QByteArray((const char *)SLOPE_Command, 12).toHex(':');
     }
@@ -657,9 +680,10 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
         // Not yet implemented, easy enough to start calibration but appears that the calibration factor needs
         // to be calculated by observing the brake power and speed after calibration starts (i.e. it's not returned
         // by the brake).
+        retCode = sendCalibrateCommand();
     }
 
-	//qDebug() << "usb status " << retCode;
+    //qDebug() << "usb status " << retCode;
     return retCode;
 }
 
@@ -679,7 +703,7 @@ int Fortius::readMessage()
     int rc;
 
     rc = rawRead(buf, 64);
-	//qDebug() << "usb status " << rc;
+    //qDebug() << "usb status " << rc;
     return rc;
 }
 
@@ -691,18 +715,18 @@ int Fortius::closePort()
 
 bool Fortius::find()
 {
-	int rc;
+    int rc;
     rc = usb2->find();
-	//qDebug() << "usb status " << rc;
+    //qDebug() << "usb status " << rc;
     return rc;
 }
 
 int Fortius::openPort()
 {
-	int rc;
+    int rc;
     // on windows we try on USB2 then on USB1 then fail...
     rc = usb2->open();
-	//qDebug() << "usb status " << rc;
+    //qDebug() << "usb status " << rc;
     return rc;
 }
 

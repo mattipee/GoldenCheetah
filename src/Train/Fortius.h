@@ -96,6 +96,7 @@ public:
     bool discover(QString deviceFilename);      // confirm CT is attached to device
 
     // SET
+    void setCalibrationValue(uint16_t value);   // set the calibration value for ERGOMODE and SSMODE
     void setLoad(double load);                  // set the load to generate in ERGOMODE
     void setGradient(double gradient, double resistanceWatts);// set the load to generate in SSMODE
     void setBrakeCalibrationFactor(double calibrationFactor); // Impacts relationship between brake setpoint and load
@@ -113,14 +114,15 @@ public:
     // GET TELEMETRY AND STATUS
     // direct access to class variables is not allowed because we need to use wait conditions
     // to sync data read/writes between the run() thread and the main gui thread
-    void getTelemetry(double &power, double &heartrate, double &cadence, double &speed, double &distance, int &buttons, int &steering, int &status);
+    void getTelemetry(double &power, double& resistance, double &heartrate, double &cadence, double &speed, double &distance, int &buttons, int &steering, int &status);
 
 private:
     void run();                                 // called by start to kick off the CT comtrol thread
 
     uint8_t ERGO_Command[12],
-            SLOPE_Command[12];
-    
+            SLOPE_Command[12],
+            CALIBRATE_Command[12];
+
     // Utility and BG Thread functions
     int openPort();
     int closePort();
@@ -129,7 +131,8 @@ private:
     int sendRunCommand(int16_t pedalSensor);
     int sendOpenCommand();
     int sendCloseCommand();
-    
+    int sendCalibrateCommand();
+
     // Protocol decoding
     int readMessage();
     //void unpackTelemetry(int &b1, int &b2, int &b3, int &buttons, int &type, int &value8, int &value12);
@@ -139,6 +142,7 @@ private:
 
     // INBOUND TELEMETRY - all volatile since it is updated by the run() thread
     double devicePower;            // current output power in Watts
+    double deviceResistance;       // current output force in ~1/137 N
     double deviceHeartRate;        // current heartrate in BPM
     double deviceCadence;          // current cadence in RPM
     double deviceSpeed;            // current speed in KPH (derived from wheel speed)
@@ -147,7 +151,7 @@ private:
     int    deviceButtons;          // Button status
     int    deviceStatus;           // Device status running, paused, disconnected
     int    deviceSteering;         // Steering angle
-    
+
     // OUTBOUND COMMANDS - all volatile since it is updated by the GUI thread
     int    mode;
     double load;
