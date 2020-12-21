@@ -17,6 +17,7 @@
  */
 
 #include "Fortius.h"
+#include "MultiRegressionizer.h"
 
 //
 // Outbound control message has the format:
@@ -60,6 +61,77 @@ public:
     ~Lock() { mutex.unlock(); }
 };
     
+const PolyFit<double>* GetFortiusUpperPowerLimitFit(unsigned maxOrder) {
+
+#if 1
+    T_MultiRegressionizer<XYVector<double>> fit(0, maxOrder);
+
+    // Points <deviceSpeedKph/watts> which are the physical torque limits
+    // of the fortius device.
+    //
+    // Driver must never ask more than watts at deviceSpeedKph. In practice
+    // there should be a safety range below these values so that rider will
+    // be able to accelerate.
+    static const std::vector<std::tuple<double, double>> FortiusUpperPowerLimits =
+    {
+        std::make_tuple<double, double>(0 , 50),
+        std::make_tuple<double, double>(10, 50),
+        std::make_tuple<double, double>(15, 200),
+        std::make_tuple<double, double>(20, 400),
+        std::make_tuple<double, double>(25, 700),
+        std::make_tuple<double, double>(30, 1000),
+        std::make_tuple<double, double>(40, 1000),
+        std::make_tuple<double, double>(50, 1000),
+        std::make_tuple<double, double>(60, 1000),
+        std::make_tuple<double, double>(70, 1000),
+        std::make_tuple<double, double>(80, 1000),
+    };
+
+    for (int i = 0; i < FortiusUpperPowerLimits.size(); i++) {
+        const std::tuple<double, double>& v = FortiusUpperPowerLimits.at(i);
+
+        fit.Push({ std::get<0>(v), std::get<1>(v) });
+    }
+
+    const PolyFit<double>* pf = fit.AsPolyFit();
+
+#else
+    // Closed form for current rational polynomial fit - avoids solving for least squares
+    // For if this construction is ever on a hot path.
+    const PolyFit<double>* pf = PolyFitGenerator::GetRationalPolyFit(
+        { /* numerator coefficients go here */ },
+        { /* denominator coefficients go here */ }, 1.);
+#endif
+
+    // Print table for debug or graphing
+    //for (double a = 0.; a < 80.; a += 1) {
+    //    qDebug() << a << "," << pf->Fit(a)<< ", " << pf->Slope(a);
+    //}
+
+    return pf;
+}
+
+// Return upper power limit of device for current device speed.
+double FortiusUpperPowerLimit(double deviceSpeedKph, double safetyRange)
+{
+    static const PolyFit<double>* s_pf = GetFortiusUpperPowerLimitFit(5);
+
+    if (!s_pf) {
+        qDebug() << "Fatal Fortius Error With Power Limits.";
+        return 1000.;
+    }
+
+    double wattLimit = s_pf->Fit(deviceSpeedKph) - safetyRange;
+
+    wattLimit = std::max<double>(0., wattLimit);
+
+    // Just return 1000 watt upper limit until we have a poly built from
+    // data that we trust.
+    return 1000.;
+
+    return wattLimit;
+}
+
 /* ----------------------------------------------------------------------
  * CONSTRUCTOR/DESRTUCTOR
  * ---------------------------------------------------------------------- */
@@ -134,10 +206,6 @@ void Fortius::setWeight(double weight)
 // Load in watts when in power mode
 void Fortius::setLoad(double load)
 {
-    // we can only do 50-1000w on a Fortius
-    if (load > 1000) load = 1000;
-    if (load < 50) load = 50;
-        
     Lock lock(pvars);
     this->load = load;
 }
@@ -145,18 +213,10 @@ void Fortius::setLoad(double load)
 // Load as slope % when in slope mode
 void Fortius::setGradient(double gradient, double resistanceWatts)
 {
-    if (gradient > 20) gradient = 20;
-    if (gradient < -5) gradient = -5;
-
-    // Set similar caps as implemented in setLoad().
-    resistanceWatts = std::max<double>(50., resistanceWatts);
-    resistanceWatts = std::min<double>(1000., resistanceWatts);
-    
     Lock lock(pvars);
-    this->gradient = gradient;
+    this->gradient = gradient; // Eye candy, not used to set load.
     this->load = resistanceWatts;
 }
-
 
 /* ----------------------------------------------------------------------
  * GET
@@ -536,15 +596,23 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
 
     pvars.lock();
     int mode = this->mode;
-    double gradient = this->gradient;
     double load = this->load;
     double weight = this->weight;
     double brakeCalibrationFactor = this->brakeCalibrationFactor;
     pvars.unlock();
 
+    // Ensure that load never exceeds physical limit of device.
+    // Trainer is limited by torque so power at low speed must be kept down.
+    static const double s_safetyBand = 50.; // 50 watt safety band to allow rider to accelerate
+    double loadLimit = FortiusUpperPowerLimit(this->deviceSpeed, s_safetyBand);
+
+    load = std::min<double>(load, loadLimit);
+    load = std::max<double>(load, -100.); // lower limit
+
     double resistance = load * (s_powerResistanceFactor / this->deviceWheelSpeed);
 
-    // Resistance Filter.
+    // ------------------------------------------------------------
+    // TODO: Delete once FortiusUpperPowerLimit is finalized.
     //
     // The fortius power range only applies at high rpm. The device cannot
     // hold against the torque of high power at low rpm.
@@ -556,6 +624,7 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
         resistance = 1500 + (this->deviceSpeed * 300);
     }
     resistance = std::min<double>(SHRT_MAX, resistance);
+    // ------------------------------------------------------------
 
     if (mode == FT_ERGOMODE)
     {
