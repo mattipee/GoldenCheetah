@@ -71,7 +71,6 @@
 #define DEFAULT_LOAD         100.00
 #define DEFAULT_GRADIENT     2.00
 #define DEFAULT_WEIGHT       77
-#define DEFAULT_CALIBRATION  0.00
 #define DEFAULT_SCALING      1.00
 
 #define FT_USB_TIMEOUT      500
@@ -99,7 +98,6 @@ public:
     void setCalibrationValue(uint16_t value);   // set the calibration value for ERGOMODE and SSMODE
     void setLoad(double load);                  // set the load to generate in ERGOMODE
     void setGradient(double gradient, double resistanceWatts);// set the load to generate in SSMODE
-    void setBrakeCalibrationFactor(double calibrationFactor); // Impacts relationship between brake setpoint and load
     void setPowerScaleFactor(double calibrationFactor);       // Scales output power, so user can adjust to match hub or crank power meter
     void setMode(int mode);
     void setWeight(double weight);                 // set the total weight of rider + bike in kg's
@@ -156,7 +154,6 @@ private:
     int    mode;
     double load;
     double gradient;
-    double brakeCalibrationFactor;
     double powerScaleFactor;
     double weight;
 

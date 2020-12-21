@@ -147,7 +147,6 @@ Fortius::Fortius(QObject *parent) : QThread(parent)
     load = DEFAULT_LOAD;
     gradient = DEFAULT_GRADIENT;
     weight = DEFAULT_WEIGHT;
-    brakeCalibrationFactor = DEFAULT_CALIBRATION;
     powerScaleFactor = DEFAULT_SCALING;
     deviceStatus=0;
     this->parent = parent;
@@ -180,13 +179,6 @@ void Fortius::setMode(int mode)
     this->mode = mode;
 }
 
-// Alters the relationship between brake setpoint at load.
-void Fortius::setBrakeCalibrationFactor(double brakeCalibrationFactor)
-{
-    Lock lock(pvars);
-    this->brakeCalibrationFactor = brakeCalibrationFactor;
-}
-
 // output power adjusted by this value so user can compare with hub or crank based readings
 void Fortius::setPowerScaleFactor(double powerScaleFactor)
 {
@@ -210,8 +202,8 @@ void Fortius::setWeight(double weight)
 
 void Fortius::setCalibrationValue(uint16_t val)
 {
-        qToLittleEndian<int16_t>(val, &ERGO_Command[10]);
-        qToLittleEndian<int16_t>(val, &SLOPE_Command[10]);
+    qToLittleEndian<int16_t>(val, &ERGO_Command[10]);
+    qToLittleEndian<int16_t>(val, &SLOPE_Command[10]);
 }
 
 // Load in watts when in power mode
@@ -273,12 +265,6 @@ double Fortius::getWeight() const
 {
     Lock lock(pvars);
     return weight;
-}
-
-double Fortius::getBrakeCalibrationFactor() const
-{
-    Lock lock(pvars);
-    return brakeCalibrationFactor;
 }
 
 double Fortius::getPowerScaleFactor() const
@@ -621,7 +607,6 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     int mode = this->mode;
     double load = this->load;
     double weight = this->weight;
-    double brakeCalibrationFactor = this->brakeCalibrationFactor;
     pvars.unlock();
 
     // Ensure that load never exceeds physical limit of device.
@@ -656,8 +641,6 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
         qToLittleEndian<int16_t>((int16_t)resistance, &ERGO_Command[4]);
         ERGO_Command[6] = pedalSensor;
 
-        // REMOVE qToLittleEndian<int16_t>((int16_t)(130 * brakeCalibrationFactor + 1040), &ERGO_Command[10]);
-
         retCode = rawWrite(ERGO_Command, 12);
     }
     else if (mode == FT_SSMODE)
@@ -665,8 +648,6 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
         qToLittleEndian<int16_t>((int16_t)resistance, &SLOPE_Command[4]);
         SLOPE_Command[6] = pedalSensor;
         SLOPE_Command[9] = (unsigned int)weight;
-
-        // REMOVE qToLittleEndian<int16_t>((int16_t)(130 * brakeCalibrationFactor + 1040), &SLOPE_Command[10]);
 
         retCode = rawWrite(SLOPE_Command, 12);
         // qDebug() << "Send Gradient " << gradient << ", Weight " << weight << ", Command " << QByteArray((const char *)SLOPE_Command, 12).toHex(':');
