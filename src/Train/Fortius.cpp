@@ -149,6 +149,7 @@ Fortius::Fortius(QObject *parent) : QThread(parent)
     gradient = DEFAULT_GRADIENT;
     weight = DEFAULT_WEIGHT;
     powerScaleFactor = DEFAULT_SCALING;
+    windSpeed_ms = DEFAULT_WIND_SPEED;
     rollingResistance = DEFAULT_ROLLING_RESISTANCE;
     windResistance = DEFAULT_WIND_RESISTANCE;
     deviceStatus=0;
@@ -201,6 +202,13 @@ void Fortius::setWeight(double weight)
 
     Lock lock(pvars);
     this->weight = weight;
+}
+
+void
+Fortius::setWindSpeed(double ws)
+{
+    Lock lock(pvars);
+    this->windSpeed_ms = ws;
 }
 
 void
@@ -626,6 +634,7 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     double gradient = this->gradient;
     double load = this->load;
     double weight = this->weight;
+    double windSpeed_ms = this->windSpeed_ms;
     double rollingResistance = this->rollingResistance;
     double windResistance = this->windResistance;
     pvars.unlock();
@@ -666,19 +675,14 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     }
     else if (mode == FT_SSMODE)
     {
-        double v = this->deviceWheelSpeed / 3.6;
+        const double v_ms       = this->deviceSpeed / 3.6;
 
-        double Froll = rollingResistance * weight * 9.81;
+        const double Froll      = rollingResistance * weight * 9.81;
+        const double Fair       = 0.5 * windResistance * (v_ms + windSpeed_ms) * abs(v_ms + windSpeed_ms) * 1.0;
+        const double Fslope     = gradient/100.0 * weight * 9.81;
 
-        double p_cdA = windResistance;
-        double w = 0.0;
-        double d = 1.0;
-        double Fair = 0.5 * p_cdA * (v+w) * abs(v+w) * d;
-
-        double Fslope = gradient/100.0 * weight * 9.81;
-
-        double Prequired = (Froll + Fair + Fslope) * v;
-        double resistance = load * (s_powerResistanceFactor / this->deviceWheelSpeed);
+        const double Prequired  = v_ms * (Froll + Fair + Fslope);
+        const double resistance = Prequired * (s_powerResistanceFactor / this->deviceWheelSpeed);
 
         qToLittleEndian<int16_t>((int16_t)resistance, &SLOPE_Command[4]);
         SLOPE_Command[6] = pedalSensor;
