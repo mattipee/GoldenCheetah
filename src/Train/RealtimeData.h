@@ -42,6 +42,7 @@ public:
                       Rf, RMV, VO2, VCO2, RER, TidalVolume, FeO2,
                       AvgWatts, AvgSpeed, AvgCadence, AvgHeartRate,
                       AvgWattsLap, AvgSpeedLap, AvgCadenceLap, AvgHeartRateLap,
+                      DeviceSpeed, SimulatedSpeed,
                       VirtualSpeed, ResistanceWatts, AltWatts, LRBalance, LapTimeRemaining,
                       LeftTorqueEffectiveness, RightTorqueEffectiveness,
                       LeftPedalSmoothness, RightPedalSmoothness, Slope, 
@@ -66,6 +67,8 @@ public:
     void setTime(long time);
     void setSpeed(double speed);
     void setWbal(double speed);
+    void setDeviceSpeed(double speed);
+    void setSimulatedSpeed(double speed);
     void setVirtualSpeed(double speed);
     void setResistanceWatts(double ew);
     void setWheelRpm(double wheelRpm, bool fMarkTimeSample = false);
@@ -125,6 +128,8 @@ public:
     long getTime() const;
     double getSpeed() const;
     double getWbal() const;
+    double getDeviceSpeed() const;
+    double getSimulatedSpeed() const;
     double getVirtualSpeed() const;
     double getResistanceWatts() const;
     double getWheelRpm() const;
@@ -185,6 +190,8 @@ private:
     double distanceRemaining;
     double lapDistance;
     double lapDistanceRemaining;
+    double deviceSpeed;
+    double simulatedSpeed;
     double virtualSpeed;
     double resistanceWatts;
     double wbal;

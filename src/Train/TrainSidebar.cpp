@@ -76,6 +76,7 @@
 
 #include "TrainDB.h"
 #include "Library.h"
+#include <iostream>
 
 TrainSidebar::TrainSidebar(Context *context) : GcWindow(context), context(context),
     bicycle(context)
@@ -1521,6 +1522,7 @@ void TrainSidebar::Connect()
     activeDevices = devices();
 
     foreach(int dev, activeDevices) {
+        std::cout << "wheelsize " << Devices[dev].wheelSize << "\n";
         Devices[dev].controller->setWheelCircumference(Devices[dev].wheelSize);
         Devices[dev].controller->setRollingResistance(bicycle.RollingResistance());
         Devices[dev].controller->setWindResistance(bicycle.WindResistance());
@@ -1682,7 +1684,7 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
                 if (dev == bpmTelemetry) rtData.setHr(local.getHr());
                 if (dev == rpmTelemetry) rtData.setCadence(local.getCadence());
                 if (dev == kphTelemetry) {
-                    rtData.setSpeed(local.getSpeed());
+                    rtData.setDeviceSpeed(local.getSpeed());
                     rtData.setDistance(local.getDistance());
                     rtData.setRouteDistance(local.getRouteDistance());
                     rtData.setDistanceRemaining(local.getDistanceRemaining());
@@ -1712,15 +1714,16 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
             // If simulated speed is *not* checked then you get speed reported by
             // trainer which in ergo mode will be dictated by your gear and cadence,
             // and in slope mode is whatever the trainer happens to implement.
+            BicycleSimState newState(rtData);
+            SpeedDistance ret = bicycle.SampleSpeed(newState);
+
+            rtData.setSimulatedSpeed(ret.v);
+
             if (useSimulatedSpeed) {
-                BicycleSimState newState(rtData);
-                SpeedDistance ret = bicycle.SampleSpeed(newState);
-
-                rtData.setSpeed(ret.v);
-
-                displaySpeed = ret.v;
+                rtData.setSpeed(rtData.getSimulatedSpeed());
                 distanceTick = ret.d;
             } else {
+                rtData.setSpeed(rtData.getDeviceSpeed());
                 distanceTick = displaySpeed / (5 * 3600); // assumes 200ms refreshrate
             }
 
