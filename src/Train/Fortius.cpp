@@ -55,7 +55,8 @@ const static uint8_t calibrate_command[12] = {
 //  https://github.com/totalreverse/ttyT1941/wiki#newer-usb-1264-bytes-protocol
 //
 // Power resistance factor is 137 * 289.75 * 3.6 ~= 142905
-static const double s_powerResistanceFactor = 142905;
+static const double s_wheelSpeedFactor = 289.75;
+static const double s_powerResistanceFactor = 137 * s_wheelSpeedFactor * 3.6;
 
 class Lock
 {
@@ -148,6 +149,8 @@ Fortius::Fortius(QObject *parent) : QThread(parent)
     gradient = DEFAULT_GRADIENT;
     weight = DEFAULT_WEIGHT;
     powerScaleFactor = DEFAULT_SCALING;
+    rollingResistance = DEFAULT_ROLLING_RESISTANCE;
+    windResistance = DEFAULT_WIND_RESISTANCE;
     deviceStatus=0;
     this->parent = parent;
 
@@ -199,6 +202,21 @@ void Fortius::setWeight(double weight)
     Lock lock(pvars);
     this->weight = weight;
 }
+
+void
+Fortius::setRollingResistance(double rr)
+{
+    Lock lock(pvars);
+    this->rollingResistance = rr;
+}
+
+void
+Fortius::setWindResistance(double wr)
+{
+    Lock lock(pvars);
+    this->windResistance = wr;
+}
+
 
 void Fortius::setCalibrationValue(uint16_t val)
 {
@@ -489,7 +507,7 @@ void Fortius::run()
                // speed
 
                 curWheelSpeed = (double)(qFromLittleEndian<quint16>(&buf[32]));
-                curSpeed = curWheelSpeed / ((3.6 * 100.) / 1.3);
+                curSpeed = curWheelSpeed / s_wheelSpeedFactor;
 
                 // Power is torque * wheelspeed - adjusted by device resistance factor.
                 curResistance = (qFromLittleEndian<qint16>(&buf[38]));
@@ -605,8 +623,11 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
 
     pvars.lock();
     int mode = this->mode;
+    double gradient = this->gradient;
     double load = this->load;
     double weight = this->weight;
+    double rollingResistance = this->rollingResistance;
+    double windResistance = this->windResistance;
     pvars.unlock();
 
     // Ensure that load never exceeds physical limit of device.
@@ -645,6 +666,20 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     }
     else if (mode == FT_SSMODE)
     {
+        double v = this->deviceWheelSpeed / 3.6;
+
+        double Froll = rollingResistance * weight * 9.81;
+
+        double p_cdA = windResistance;
+        double w = 0.0;
+        double d = 1.0;
+        double Fair = 0.5 * p_cdA * (v+w) * abs(v+w) * d;
+
+        double Fslope = gradient/100.0 * weight * 9.81;
+
+        double Prequired = (Froll + Fair + Fslope) * v;
+        double resistance = load * (s_powerResistanceFactor / this->deviceWheelSpeed);
+
         qToLittleEndian<int16_t>((int16_t)resistance, &SLOPE_Command[4]);
         SLOPE_Command[6] = pedalSensor;
         SLOPE_Command[9] = (unsigned int)weight;

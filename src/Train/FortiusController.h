@@ -51,6 +51,8 @@ public:
     void setGradient(double, double);
     void setMode(int);
     void setWeight(double);
+    void setRollingResistance(double);
+    void setWindResistance(double);
 
     // calibration
     uint8_t  getCalibrationType();
