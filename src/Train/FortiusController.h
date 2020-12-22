@@ -51,6 +51,7 @@ public:
     void setGradient(double, double);
     void setMode(int);
     void setWeight(double);
+    void setWindSpeed(double);
     void setRollingResistance(double);
     void setWindResistance(double);
 

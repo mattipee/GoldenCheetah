@@ -72,6 +72,7 @@
 #define DEFAULT_GRADIENT           2.00
 #define DEFAULT_WEIGHT             77
 #define DEFAULT_SCALING            1.00
+#define DEFAULT_WIND_SPEED         0.0
 #define DEFAULT_ROLLING_RESISTANCE 0.004
 #define DEFAULT_WIND_RESISTANCE    0.51
 
@@ -103,6 +104,7 @@ public:
     void setPowerScaleFactor(double calibrationFactor);       // Scales output power, so user can adjust to match hub or crank power meter
     void setMode(int mode);
     void setWeight(double weight);                 // set the total weight of rider + bike in kg's
+    void setWindSpeed(double);
     void setRollingResistance(double);
     void setWindResistance(double);
 
@@ -160,6 +162,7 @@ private:
     double gradient;
     double powerScaleFactor;
     double weight;
+    double windSpeed_ms;
     double rollingResistance;
     double windResistance;
 
