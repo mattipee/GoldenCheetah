@@ -534,16 +534,22 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     pvars.unlock();
 
     // Slope mode receives newtons of resistance directly.
-    double newtons = (mode == FT_SSMODE) 
-        ? resistanceNewtons 
-        : load * (s_deviceSpeedFactor / this->deviceWheelSpeed);
+    double newtons = 5.;
+    if (mode == FT_SSMODE) {
+        newtons = resistanceNewtons;
+    } else if (this->deviceWheelSpeed > 0.5) {
+        newtons = load * (s_deviceSpeedFactor / this->deviceWheelSpeed);
+    }
 
     // Ensure that load never exceeds physical limit of device.
 
     // Equation that describes upper limit of i-Flow device. Other devices have
     // higher limits. This should be part of device config.
-    double trainerForceUpperNewtons = std::max<double>(0., 3.7 * (15. - (100. / this->deviceWheelSpeed)));
-    static const double s_trainerForceLowerNewtons = -10; // no idea
+    double trainerForceUpperNewtons = 5;
+    if (this->deviceWheelSpeed > 0.5) {
+        trainerForceUpperNewtons = (3.7 * (15. - (100. / this->deviceWheelSpeed)));
+    }
+    static const double s_trainerForceLowerNewtons = -5; // no idea
 
     newtons = std::min<double>(newtons, trainerForceUpperNewtons);
     newtons = std::max<double>(newtons, s_trainerForceLowerNewtons);
