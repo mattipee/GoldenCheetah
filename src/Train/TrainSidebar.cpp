@@ -1905,7 +1905,7 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
             double resistanceWatts = (status & RT_MODE_SLOPE)
                 ? bicycle.WattsForV(BicycleSimState(rtData), speedMS)
                 : displayPower;
-            resistanceNewtons = resistanceWatts / speedMS;
+            resistanceNewtons = speedMS > 0. ? resistanceWatts / speedMS : 0;
             rtData.setResistanceNewtons(resistanceNewtons);
 
             // W'bal on the fly
