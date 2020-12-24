@@ -265,7 +265,7 @@ class TrainSidebar : public GcWindow
         double displayLatitude, displayLongitude, displayAltitude; // geolocation
         long load;
         double slope;
-        double resistanceWatts;    // slope mode load hint
+        double resistanceNewtons;  // slope mode load hint
         int displayWorkoutLap;     // which Lap in the workout are we at?
         bool lapAudioEnabled;
         bool lapAudioThisLap;

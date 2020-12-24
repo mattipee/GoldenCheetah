@@ -180,7 +180,7 @@ ComputrainerController::setLoad(double load)
 }
 
 void
-ComputrainerController::setGradient(double grade, double resistanceWatts)
+ComputrainerController::setGradient(double grade, double resistanceNewtons)
 {
     myComputrainer->setGradient(grade);
 }

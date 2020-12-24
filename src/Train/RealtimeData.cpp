@@ -25,7 +25,7 @@ RealtimeData::RealtimeData()
 {
     name[0] = '\0';
     hr= watts= altWatts= speed= wheelRpm= load= slope= torque= 0.0;
-    cadence = distance = altDistance = virtualSpeed = wbal = resistanceWatts = 0.0;
+    cadence = distance = altDistance = virtualSpeed = wbal = resistanceNewtons = 0.0;
     lap = msecs = lapMsecs = lapMsecsRemaining = ergMsecsRemaining = 0;
     thb = smo2 = o2hb = hhb = 0.0;
     lrbalance = rte = lte = lps = rps = 0.0;
@@ -78,9 +78,9 @@ void RealtimeData::setVirtualSpeed(double speed)
 {
     this->virtualSpeed = speed;
 }
-void RealtimeData::setResistanceWatts(double x)
+void RealtimeData::setResistanceNewtons(double x)
 {
-    this->resistanceWatts = x;
+    this->resistanceNewtons = x;
 }
 void RealtimeData::setWheelRpm(double wheelRpm, bool fMarkWheelRpmTime)
 {
@@ -204,9 +204,9 @@ double RealtimeData::getVirtualSpeed() const
 {
     return virtualSpeed;
 }
-double RealtimeData::getResistanceWatts() const
+double RealtimeData::getResistanceNewtons() const
 {
-    return resistanceWatts;
+    return resistanceNewtons;
 }
 double RealtimeData::getWheelRpm() const
 {
@@ -387,7 +387,7 @@ double RealtimeData::value(DataSeries series) const
     case VirtualSpeed: return virtualSpeed;
         break;
 
-    case ResistanceWatts: return resistanceWatts;
+    case ResistanceNewtons: return resistanceNewtons;
         break;
 
     case Cadence: return cadence;
@@ -515,7 +515,7 @@ const QList<RealtimeData::DataSeries> &RealtimeData::listDataSeries()
         seriesList << AvgCadenceLap;
         seriesList << AvgHeartRateLap;
         seriesList << VirtualSpeed;
-        seriesList << ResistanceWatts;
+        seriesList << ResistanceNewtons;
         seriesList << AltWatts;
         seriesList << LRBalance;
         seriesList << LapTimeRemaining;
@@ -610,7 +610,7 @@ QString RealtimeData::seriesName(DataSeries series)
     case VirtualSpeed: return tr("Virtual Speed");
         break;
 
-    case ResistanceWatts: return tr("Resistance Watts");
+    case ResistanceNewtons: return tr("Resistance Newtons");
         break;
 
     case Cadence: return tr("Cadence");

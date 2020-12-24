@@ -139,9 +139,9 @@ FortiusController::setLoad(double load)
 }
 
 void
-FortiusController::setGradient(double grade, double resistanceWatts)
+FortiusController::setGradient(double grade, double resistanceNewtons)
 {
-    myFortius->setGradient(grade, resistanceWatts);
+    myFortius->setGradient(grade, resistanceNewtons);
 }
 
 void

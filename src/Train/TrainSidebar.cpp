@@ -349,7 +349,7 @@ TrainSidebar::TrainSidebar(Context *context) : GcWindow(context), context(contex
     wbalr = wbal = 0;
     load_msecs = total_msecs = lap_msecs = 0;
     displayWorkoutDistance = displayDistance = displayPower = displayHeartRate =
-    displaySpeed = displayCadence = slope = resistanceWatts = load = 0;
+    displaySpeed = displayCadence = slope = resistanceNewtons = load = 0;
     displaySMO2 = displayTHB = displayO2HB = displayHHB = 0;
     displayLRBalance = displayLTE = displayRTE = displayLPS = displayRPS = 0;
     displayLatitude = displayLongitude = displayAltitude = 0.0;
@@ -1126,7 +1126,8 @@ void TrainSidebar::Start()       // when start button is pressed
         //gui_timer->start(REFRESHRATE);
         if (status & RT_RECORDING) disk_timer->start(SAMPLERATE);
         load_period.restart();
-        if (status & RT_WORKOUT) load_timer->start(LOADRATE);
+        //if (status & RT_WORKOUT) load_timer->start(LOADRATE);
+        load_timer->start(LOADRATE);
 
 #if !defined GC_VIDEO_NONE
         mediaTree->setEnabled(false);
@@ -1151,7 +1152,8 @@ void TrainSidebar::Start()       // when start button is pressed
         //foreach(int dev, activeDevices) Devices[dev].controller->pause();
         //gui_timer->stop();
         if (status & RT_RECORDING) disk_timer->stop();
-        if (status & RT_WORKOUT) load_timer->stop();
+        //if (status & RT_WORKOUT)
+        load_timer->stop();
         load_msecs += load_period.restart();
 
 #if !defined GC_VIDEO_NONE
@@ -1190,7 +1192,7 @@ void TrainSidebar::Start()       // when start button is pressed
         // START!
         load = 100;
         slope = 0.0;
-        resistanceWatts = 0.0;
+        resistanceNewtons = 0.0;
 
         // Reset Speed Simulation
         bicycle.clear();
@@ -1238,9 +1240,7 @@ void TrainSidebar::Start()       // when start button is pressed
         //    Devices[dev].controller->resetCalibrationState();
         //}
 
-        if (status & RT_WORKOUT) {
-            load_timer->start(LOADRATE);      // start recording
-        }
+        load_timer->start(LOADRATE);      // start recording
 
         if (recordSelector->isChecked()) {
             setStatusFlags(RT_RECORDING);
@@ -1294,7 +1294,8 @@ void TrainSidebar::Pause()        // pause capture to recalibrate
         gui_timer->start(REFRESHRATE);
         if (status & RT_RECORDING) disk_timer->start(SAMPLERATE);
         load_period.restart();
-        if (status & RT_WORKOUT) load_timer->start(LOADRATE);
+        //if (status & RT_WORKOUT)
+        load_timer->start(LOADRATE);
 
 #if !defined GC_VIDEO_NONE
         mediaTree->setEnabled(false);
@@ -1313,7 +1314,7 @@ void TrainSidebar::Pause()        // pause capture to recalibrate
         setStatusFlags(RT_PAUSED);
         gui_timer->stop();
         if (status & RT_RECORDING) disk_timer->stop();
-        if (status & RT_WORKOUT) load_timer->stop();
+        load_timer->stop();
         load_msecs += load_period.restart();
 
         // enable media tree so we can change movie
@@ -1365,7 +1366,7 @@ void TrainSidebar::Stop(int deviceStatus)        // when stop button is pressed
 
     load = 0;
     slope = 0.0;
-    resistanceWatts = 0.0;
+    resistanceNewtons = 0.0;
 
     QDateTime now = QDateTime::currentDateTime();
 
@@ -1411,10 +1412,8 @@ void TrainSidebar::Stop(int deviceStatus)        // when stop button is pressed
         status &= ~RT_RECORDING;
     }
 
-    if (status & RT_WORKOUT) {
-        load_timer->stop();
-        load_msecs = 0;
-    }
+    load_timer->stop();
+    load_msecs = 0;
 
     // get back to normal after it may have been adusted by the user
     //lastAppliedIntensity=100;
@@ -1902,10 +1901,12 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
 
             // Compute resisting watts needed for current slope and speed. This can be used to
             // drive resistance of trainers that only support ergo mode.
-            resistanceWatts = (status & RT_MODE_SLOPE)
-                ? bicycle.WattsForV(BicycleSimState(rtData), displaySpeed / 3.6)
+            double speedMS = displaySpeed / 3.6;
+            double resistanceWatts = (status & RT_MODE_SLOPE)
+                ? bicycle.WattsForV(BicycleSimState(rtData), speedMS)
                 : displayPower;
-            rtData.setResistanceWatts(resistanceWatts);
+            resistanceNewtons = resistanceWatts / speedMS;
+            rtData.setResistanceNewtons(resistanceNewtons);
 
             // W'bal on the fly
             // using Dave Waterworth's reformulation
@@ -1933,9 +1934,9 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
             // With this, it will now call tick just about every second
             long rmsecs = round((rtData.getMsecs() + 99) / 100) * 100;
             // Test for <= 100ms
-            if (!(status&RT_WORKOUT) && ((rmsecs % 1000) <= 100)) {
-                context->notifySetNow(rtData.getMsecs());
-            }
+            //if (!(status&RT_WORKOUT) && ((rmsecs % 1000) <= 100)) {
+            //    context->notifySetNow(rtData.getMsecs());
+            //}
         }
 
 #ifdef Q_OS_MAC
@@ -2125,7 +2126,7 @@ void TrainSidebar::loadUpdate()
         if (slope == -100) {
             Stop(DEVICE_OK);
         } else {
-            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceWatts);
+            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceNewtons);
             context->notifySetNow(displayWorkoutDistance * 1000);
         }
     }
@@ -2152,7 +2153,7 @@ void TrainSidebar::toggleCalibration()
         load_period.restart();
 
         clearStatusFlags(RT_CALIBRATING);
-        if (status & RT_WORKOUT) load_timer->start(LOADRATE);
+        load_timer->start(LOADRATE);
         if (status & RT_RECORDING) disk_timer->start(SAMPLERATE);
         context->notifyUnPause(); // get video started again, amongst other things
 
@@ -2172,7 +2173,7 @@ void TrainSidebar::toggleCalibration()
                 if (calibrationDeviceIndex == dev) {
                     Devices[dev].controller->setCalibrationState(CALIBRATION_STATE_IDLE);
                     Devices[dev].controller->setMode(RT_MODE_SPIN);
-                    Devices[dev].controller->setGradient(slope, resistanceWatts);
+                    Devices[dev].controller->setGradient(slope, resistanceNewtons);
                 }
             }
         }
@@ -2186,7 +2187,7 @@ void TrainSidebar::toggleCalibration()
 
         setStatusFlags(RT_CALIBRATING);
         if (status & RT_RECORDING) disk_timer->stop();
-        if (status & RT_WORKOUT) load_timer->stop();
+        load_timer->stop();
         load_msecs += load_period.restart();
 
         context->notifyPause(); // get video started again, amongst other things
@@ -2586,7 +2587,7 @@ void TrainSidebar::Higher()
         if (status&RT_MODE_ERGO)
             foreach(int dev, activeDevices) Devices[dev].controller->setLoad(load);
         else
-            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceWatts);
+            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceNewtons);
     }
 
     emit setNotification(tr("Increasing intensity.."), 2);
@@ -2612,7 +2613,7 @@ void TrainSidebar::Lower()
         if (status&RT_MODE_ERGO)
             foreach(int dev, activeDevices) Devices[dev].controller->setLoad(load);
         else
-            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceWatts);
+            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceNewtons);
     }
 
     emit setNotification(tr("Decreasing intensity.."), 2);
