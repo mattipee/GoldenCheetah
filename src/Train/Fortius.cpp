@@ -421,7 +421,7 @@ void Fortius::run()
                 // speed
 
                 curWheelSpeed = (double)(qFromLittleEndian<quint16>(&buf[32]));
-                curSpeed = curWheelSpeed / ((3.6 * 100.) / 1.3);
+                curSpeed = curWheelSpeed / 289.75;
 
                 // Power is torque * wheelspeed - adjusted by device resistance factor.
                 curPower = (qFromLittleEndian<qint16>(&buf[38]) * curWheelSpeed) / s_powerResistanceFactor;
@@ -539,10 +539,13 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
         : load * (s_deviceSpeedFactor / this->deviceWheelSpeed);
 
     // Ensure that load never exceeds physical limit of device.
-    static const double s_trainerForceUpperNewtons = 36.;
-    static const double s_trainerForceLowerNewtons = -3.6;
 
-    newtons = std::min<double>(newtons, s_trainerForceUpperNewtons);
+    // Equation that describes upper limit of i-Flow device. Other devices have
+    // higher limits. This should be part of device config.
+    double trainerForceUpperNewtons = std::max<double>(0., 3.7 * (15. - (100. / this->deviceWheelSpeed)));
+    static const double s_trainerForceLowerNewtons = -10; // no idea
+
+    newtons = std::min<double>(newtons, trainerForceUpperNewtons);
     newtons = std::max<double>(newtons, s_trainerForceLowerNewtons);
 
     double resistance = newtons * s_newtonsToResistanceFactor;
