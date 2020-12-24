@@ -51,7 +51,9 @@ const static uint8_t slope_command[12] = {
 //  https://github.com/totalreverse/ttyT1941/wiki#newer-usb-1264-bytes-protocol
 //
 // Power resistance factor is 137 * 289.75 * 3.6 ~= 142905
-static const double s_powerResistanceFactor = 142905;
+static const double s_newtonsToResistanceFactor = 137;
+static const double s_deviceSpeedFactor = (289.75 * 3.6); 
+static const double s_powerResistanceFactor = s_newtonsToResistanceFactor * s_deviceSpeedFactor; // 142905;
 
 class Lock
 {
@@ -534,7 +536,7 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     // Slope mode receives newtons of resistance directly.
     double newtons = (mode == FT_SSMODE) 
         ? resistanceNewtons 
-        : load / this->deviceWheelSpeed;
+        : load * (s_deviceSpeedFactor / this->deviceWheelSpeed);
 
     // Ensure that load never exceeds physical limit of device.
     static const double s_trainerForceUpperNewtons = 36.;
@@ -543,7 +545,7 @@ int Fortius::sendRunCommand(int16_t pedalSensor)
     newtons = std::min<double>(newtons, s_trainerForceUpperNewtons);
     newtons = std::max<double>(newtons, s_trainerForceLowerNewtons);
 
-    double resistance = newtons * s_powerResistanceFactor;
+    double resistance = newtons * s_newtonsToResistanceFactor;
 
     // ------------------------------------------------------------
     // FortiusAnt Speed Sensitive Resistance Limits.
