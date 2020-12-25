@@ -180,9 +180,12 @@ ComputrainerController::setLoad(double load)
 }
 
 void
-ComputrainerController::setGradient(double grade, double resistanceNewtons)
+ComputrainerController::setSimState(double resistanceNewtons, double speedKph, double gradient)
 {
-    myComputrainer->setGradient(grade);
+    Q_UNUSED(resistanceNewtons);
+    Q_UNUSED(speedKph);
+
+    myComputrainer->setGradient(gradient);
 }
 void
 ComputrainerController::setMode(int mode)

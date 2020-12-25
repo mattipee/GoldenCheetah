@@ -140,8 +140,11 @@ ANTlocalController::setLoad(double x) {
 }
 
 void
-ANTlocalController::setGradient(double x, double rw) {
-    myANTlocal->setGradient(x);
+ANTlocalController::setSimState(double newtons, double speedKph, double gradient) {
+    Q_UNUSED(newtons);
+    Q_UNUSED(speedKph);
+
+    myANTlocal->setGradient(gradient);
 }
 
 void

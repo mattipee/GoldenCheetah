@@ -46,7 +46,7 @@ public:
     void getRealtimeData(RealtimeData &rtData);
     void pushRealtimeData(RealtimeData &rtData);
     void setLoad(double);
-    void setGradient(double, double);
+    void setSimState(double, double, double);
     void setMode(int);
 
     // calibration

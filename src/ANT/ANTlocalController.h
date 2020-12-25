@@ -63,7 +63,7 @@ public:
 
     // now with the kickr we can control trainers
     void setLoad(double);
-    void setGradient(double, double);
+    void setSimState(double, double, double);
     void setMode(int);
 
     // passing calibration state between trainer and TrainSidebar

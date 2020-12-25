@@ -108,8 +108,11 @@ void MonarkController::setLoad(double load)
     m_monark->setLoad(load);
 }
 
-void MonarkController::setGradient(double gradient, double resistanceNewtons)
+void MonarkController::setSimState(double resistanceNewtons, double speedKph, double gradient)
 {
+    Q_UNUSED(resistanceNewtons);
+    Q_UNUSED(speedKph);
+
     // Repurpose gradient as kp for Monarks
     m_monark->setKp(gradient);
 }

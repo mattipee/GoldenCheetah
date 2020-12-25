@@ -1932,7 +1932,7 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
             // Do some rounding to the hundreds because as time goes by, rtData.getMsecs() drifts just below and then it does not pass the mod 1000 < 100 test
             // For example:  msecs = 42199.  Mod 1000 = 199 versus msecs = 42000.  Mod 1000 = 0
             // With this, it will now call tick just about every second
-            long rmsecs = round((rtData.getMsecs() + 99) / 100) * 100;
+            //long rmsecs = round((rtData.getMsecs() + 99) / 100) * 100;
             // Test for <= 100ms
             //if (!(status&RT_WORKOUT) && ((rmsecs % 1000) <= 100)) {
             //    context->notifySetNow(rtData.getMsecs());
@@ -2126,7 +2126,7 @@ void TrainSidebar::loadUpdate()
         if (slope == -100) {
             Stop(DEVICE_OK);
         } else {
-            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceNewtons);
+            foreach(int dev, activeDevices) Devices[dev].controller->setSimState(resistanceNewtons, displaySpeed, slope);
             context->notifySetNow(displayWorkoutDistance * 1000);
         }
     }
@@ -2173,7 +2173,7 @@ void TrainSidebar::toggleCalibration()
                 if (calibrationDeviceIndex == dev) {
                     Devices[dev].controller->setCalibrationState(CALIBRATION_STATE_IDLE);
                     Devices[dev].controller->setMode(RT_MODE_SPIN);
-                    Devices[dev].controller->setGradient(slope, resistanceNewtons);
+                    Devices[dev].controller->setSimState(resistanceNewtons, displaySpeed, slope);
                 }
             }
         }
@@ -2203,7 +2203,7 @@ void TrainSidebar::toggleCalibration()
                 if (status&RT_MODE_ERGO)
                     Devices[dev].controller->setLoad(0);
                 else
-                    Devices[dev].controller->setGradient(0, 0);
+                    Devices[dev].controller->setSimState(0, 0, 0);
 
 
                 Devices[dev].controller->setMode(RT_MODE_CALIBRATE);
@@ -2587,7 +2587,7 @@ void TrainSidebar::Higher()
         if (status&RT_MODE_ERGO)
             foreach(int dev, activeDevices) Devices[dev].controller->setLoad(load);
         else
-            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceNewtons);
+            foreach(int dev, activeDevices) Devices[dev].controller->setSimState(resistanceNewtons, displaySpeed, slope);
     }
 
     emit setNotification(tr("Increasing intensity.."), 2);
@@ -2613,7 +2613,7 @@ void TrainSidebar::Lower()
         if (status&RT_MODE_ERGO)
             foreach(int dev, activeDevices) Devices[dev].controller->setLoad(load);
         else
-            foreach(int dev, activeDevices) Devices[dev].controller->setGradient(slope, resistanceNewtons);
+            foreach(int dev, activeDevices) Devices[dev].controller->setSimState(resistanceNewtons, displaySpeed, slope);
     }
 
     emit setNotification(tr("Decreasing intensity.."), 2);

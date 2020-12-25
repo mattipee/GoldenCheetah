@@ -203,8 +203,11 @@ ImagicController::setLoad(double load)
 }
 
 void
-ImagicController::setGradient(double grade, double resistanceNewtons)
+ImagicController::setSimState(double resistanceNewtons, double speedKph, double grade)
 {
+    Q_UNUSED(resistanceNewtons);
+    Q_UNUSED(speedKph);
+
     myImagic->setGradient(grade);
 }
 

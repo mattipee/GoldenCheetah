@@ -261,11 +261,14 @@ void BT40Controller::setLoad(double l)
   }
 }
 
-void BT40Controller::setGradient(double g, double rw) 
+void BT40Controller::setSimState(double newtons, double speedKph, double g) 
 {
+  Q_UNUSED(newtons);
+  Q_UNUSED(speedKph);
+
   gradient = g;
   for (auto* dev: devices) {
-    dev->setGradient(g);
+    dev->setGradient(gradient);
   }
 }
 
