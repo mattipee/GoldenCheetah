@@ -1271,6 +1271,9 @@ void TrainSidebar::Start()       // when start button is pressed
         }
         gui_timer->start(REFRESHRATE);      // start recording
 
+        // Start from previous distance... TODO plenty
+        displayWorkoutDistance = appsettings->value(this, TRAIN_PROGRESS_DISTANCE, 0.0).toDouble();
+
         emit setNotification(tr("Starting.."), 2);
     }
 }
@@ -1399,7 +1402,8 @@ void TrainSidebar::Stop(int deviceStatus)        // when stop button is pressed
             QList<QString> list;
             list.append(name);
 
-            RideImportWizard *dialog = new RideImportWizard (list, context);
+            const double distanceToSave = displayWorkoutDistance; // auto, to capture by value in the following lambda
+            RideImportWizard *dialog = new RideImportWizard (list, context, [distanceToSave](){appsettings->setValue(TRAIN_PROGRESS_DISTANCE, distanceToSave);});
             dialog->process(); // do it!
         }
 

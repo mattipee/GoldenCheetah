@@ -80,6 +80,17 @@ RideImportWizard::RideImportWizard(QList<QString> files, Context *context, QWidg
 
 }
 
+RideImportWizard::RideImportWizard(QList<QString> files, Context *context, std::function<void()> callback, QWidget *parent) : QDialog(parent), context(context)
+{
+    _importInProcess = true;
+    setAttribute(Qt::WA_DeleteOnClose);
+    autoImportMode = false;
+    autoImportStealth = false;
+    init(files, context);
+    callbackOnSave = callback;
+    _importInProcess = false;
+
+}
 
 RideImportWizard::RideImportWizard(RideAutoImportConfig *dirs, Context *context, QWidget *parent) : QDialog(parent), context(context), importConfig(dirs)
 {
@@ -1148,6 +1159,7 @@ RideImportWizard::abortClicked()
     progressBar->setValue(progressBar->maximum());
     phaseLabel->setText(donemessage);
     abortButton->setText(tr("Finish"));
+    if (callbackOnSave) callbackOnSave();
     aborted = false;
     if (autoImportStealth) {
         abortClicked();  // simulate pressing the "Finish" button - even if the window got visible

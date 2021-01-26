@@ -20,6 +20,7 @@
 #define _RideImportWizard_h
 #include "GoldenCheetah.h"
 
+#include <functional>
 #include <QtGui>
 #include <QDialog>
 #include <QLabel>
@@ -45,6 +46,7 @@ class RideImportWizard : public QDialog
 public:
     RideImportWizard(QList<QUrl> *urls, Context *context, QWidget *parent = 0);
     RideImportWizard(QList<QString> files, Context *context, QWidget *parent = 0);
+    RideImportWizard(QList<QString> files, Context *context, std::function<void()> callbackOnSave, QWidget *parent = 0);
     RideImportWizard(RideAutoImportConfig *dirs, Context *context, QWidget *parent = 0);
 
     ~RideImportWizard();
@@ -94,6 +96,7 @@ private:
 
     QStringList deleteMe; // list of temp files created during import
 
+    std::function<void()> callbackOnSave; // callback to be called on successful save
 
 };
 
