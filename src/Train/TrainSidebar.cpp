@@ -2653,6 +2653,29 @@ void TrainSidebar::Lower()
     emit setNotification(tr("Decreasing intensity.."), 2);
 }
 
+double TrainSidebar::getIntensifiedGradient(double slope, double simWatts, double deviceSpeed, double intensityFactor) const {
+    // Compute gradient needed to apply intensity factor to current state.
+    double deviceSpeedMS = deviceSpeed / 3.6;
+    return bicycle.GradientForIntensity(slope, simWatts, deviceSpeedMS, intensityFactor);
+}
+
+// When there is a divergence between simulated speed and device speed
+// adjust mass sent to device so it can emulate the simulated kinetic
+// energy.
+double TrainSidebar::getAdjustedInertialMass(double simMass, double simSpeed, double deviceSpeed) {
+    //double simMass = bicycle.MassKG();
+
+    if (simSpeed < 0.1 || deviceSpeed < 0.1) // avoid zeros
+        return simMass;
+
+    double simMassFactor = (simSpeed / deviceSpeed);
+
+    // Clamp computed factor to some reasonable range: 0.1 to 5
+    simMassFactor = std::min<double>(5, std::max<double>(0.1, simMassFactor));
+
+    return simMass * simMassFactor;
+}
+
 void TrainSidebar::setLabels()
 {
     /* should this be kept, or removed? Currently these are always hidden.
