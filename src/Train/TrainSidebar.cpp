@@ -2653,10 +2653,10 @@ void TrainSidebar::Lower()
     emit setNotification(tr("Decreasing intensity.."), 2);
 }
 
-double TrainSidebar::getIntensifiedGradient(double slope, double simWatts, double deviceSpeed, double intensityFactor) const {
+double TrainSidebar::getIntensifiedGradient(double simWatts, double deviceSpeed) const {
     // Compute gradient needed to apply intensity factor to current state.
     double deviceSpeedMS = deviceSpeed / 3.6;
-    return bicycle.GradientForIntensity(slope, simWatts, deviceSpeedMS, intensityFactor);
+    return bicycle.GradientForIntensity(slope, simWatts, deviceSpeedMS, lastAppliedIntensity/100.);
 }
 
 // When there is a divergence between simulated speed and device speed

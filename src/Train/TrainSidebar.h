@@ -206,7 +206,7 @@ class TrainSidebar : public GcWindow
 
         // User adjusted intensity
         void adjustIntensity(int value);     // Intensity of workout user adjusted
-        double getIntensifiedGradient(double slope, double simWatts, double deviceSpeed, double intensityFactor) const;
+        double getIntensifiedGradient(double simWatts, double deviceSpeed) const;
         static double getAdjustedInertialMass(double simMass, double simSpeed, double deviceSpeed);
 
         // slot for receiving remote control commands
