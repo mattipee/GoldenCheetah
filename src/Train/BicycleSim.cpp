@@ -376,6 +376,57 @@ double Bicycle::WattsForV(const BicycleSimState &simState, double v) const
     return wattsForV;
 }
 
+// Compute new gradient for current state that achieves desired intensity.
+// This is needed to implement virtual gears when running a smart trainer
+// in 'slope mode'
+double Bicycle::GradientForIntensity(double slope, double simWatts, double v, double intensity) const
+{
+    // Speed below 'almost zero' and there is nothing to be done.
+    if (v < 0.1) return slope;
+
+    // Derive intensified slope from how force changes with gradient.
+    // Compute derivative of force with respect slope:
+    //
+    // dNdm is:
+    //
+    //       m_Cm(CrV m v + crr g0 kg m - g0 kg)
+    //     - -----------------------------------
+    //                    2     3/2
+    //                  (m  + 1)
+
+    // Coefficient for velocity - dependent dynamic rolling resistance, here approximated with 0.1
+    static const double s_CrV = 0.1;
+
+
+    // gradient to slope and clamp to -1 to 1.
+    double m = std::max<double>(-1, std::min<double>(1, slope / 100));
+
+    // Determine dN: desired change in force
+    double N = simWatts / v;
+
+    // Apply 1/intensity when force < 0.
+    // Logic: increased intensity is the same as reduced easyness.
+    double appliedIntensity = (N >= 0) ? intensity : 1 / intensity;
+
+    double targetN = N * appliedIntensity;
+    double dN = targetN - N; // desired change in force
+
+    // dNdm
+    double mg = MassKG() * s_g0;
+    double n = -m_constants.m_Cm * (s_CrV * m * v + m_constants.m_crr * mg * m - mg);
+    double cb = sqrt(m * m + 1); // 1 / cos(atan(m))
+    double dNdm = n / sqrt(cb * cb * cb);
+
+    // compute needed change in slope: dm
+    double dm = dNdm ? (dN / dNdm) : 0;
+
+    // clamp output to (+/-)0.4
+    double mNew = std::min<double>(0.4, std::max<double>(-0.4, m + dm));
+
+    // slope to gradient
+    return mNew * 100;
+}
+
 // Return ms/s from current state, speed and impulse duration.
 // This is linear application of watts over time to determine
 // new speed.
