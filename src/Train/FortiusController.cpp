@@ -96,7 +96,7 @@ FortiusController::getRealtimeData(RealtimeData &rtData)
     rtData.setWatts(Power);
     rtData.setHr(HeartRate);
     rtData.setCadence(Cadence);
-    rtData.setSpeed(Speed);
+    rtData.setTrainerSpeed(Speed);
 
 
     // post processing, probably not used

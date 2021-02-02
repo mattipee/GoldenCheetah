@@ -69,7 +69,7 @@ void NullController::getRealtimeData(RealtimeData &rtData) {
     // simulation.
     BicycleSimState newState(rtData);
     SpeedDistance ret = bicycle.SampleSpeed(newState);
-    rtData.setSpeed(ret.v);
+    rtData.setTrainerSpeed(ret.v);
     rtData.setCadence(85 + ((rand()%10)-5));
     rtData.setHr(145 + ((rand()%3)-2));
     rtData.setHb(35 + ((rand()%30)), 11 + (double(rand()%100) * 0.01f));

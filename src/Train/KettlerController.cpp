@@ -91,7 +91,7 @@ KettlerController::getRealtimeData(RealtimeData &rtData)
     rtData.setWatts(m_kettler->power());
     rtData.setHr(m_kettler->heartRate());
     rtData.setCadence(m_kettler->cadence());
-    rtData.setSpeed(m_kettler->speed());
+    rtData.setTrainerSpeed(m_kettler->speed());
 }
 
 void KettlerController::pushRealtimeData(RealtimeData &) { } // update realtime data with current values

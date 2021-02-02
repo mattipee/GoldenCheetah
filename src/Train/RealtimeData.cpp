@@ -26,6 +26,7 @@ RealtimeData::RealtimeData()
     name[0] = '\0';
     hr= watts= altWatts= speed= wheelRpm= load= slope= torque= 0.0;
     cadence = distance = altDistance = virtualSpeed = wbal = 0.0;
+    trainerSpeed = simulatedSpeed = 0.0;
     lap = msecs = lapMsecs = lapMsecsRemaining = ergMsecsRemaining = 0;
     thb = smo2 = o2hb = hhb = 0.0;
     lrbalance = rte = lte = lps = rps = 0.0;
@@ -760,3 +761,9 @@ double RealtimeData::getVCO2() const { return vco2; }
 double RealtimeData::getRER() const { return rer; }
 double RealtimeData::getTv() const { return tv; }
 double RealtimeData::getFeO2() const { return feo2; }
+
+double RealtimeData::getTrainerSpeed() const { return trainerSpeed; }
+double RealtimeData::getSimulatedSpeed() const { return simulatedSpeed; }
+void RealtimeData::setTrainerSpeed(double speed) { trainerSpeed = speed; }
+void RealtimeData::setSimulatedSpeed(double speed) { simulatedSpeed = speed; }
+

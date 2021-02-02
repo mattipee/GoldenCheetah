@@ -613,7 +613,7 @@ public:
 
     void setSpeed(double x)
     {
-        telemetry.setSpeed(x);
+        telemetry.setTrainerSpeed(x);
     }
 
     void incAltDistance(double x)

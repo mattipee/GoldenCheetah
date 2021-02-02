@@ -65,7 +65,7 @@ void DaumController::getRealtimeData(RealtimeData &rtData) {
     rtData.setWatts(daumDevice_.getPower());
     rtData.setHr(daumDevice_.getHeartRate());
     rtData.setCadence(daumDevice_.getCadence());
-    rtData.setSpeed(daumDevice_.getSpeed());
+    rtData.setTrainerSpeed(daumDevice_.getSpeed());
 }
 
 void DaumController::setLoad(double load) {

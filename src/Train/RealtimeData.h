@@ -93,6 +93,8 @@ public:
     void setLatitude(double);
     void setLongitude(double);
     void setAltitude(double);
+    void setTrainerSpeed(double speed);
+    void setSimulatedSpeed(double speed);
 
     const char *getName() const;
 
@@ -147,6 +149,8 @@ public:
     double getLatitude() const;
     double getLongitude() const;
     double getAltitude() const;
+    double getTrainerSpeed() const;
+    double getSimulatedSpeed() const;
 
     void setTrainerStatusAvailable(bool status);
     bool getTrainerStatusAvailable() const;
@@ -167,7 +171,7 @@ private:
     char name[64];
 
     // realtime telemetry
-    double hr, watts, altWatts, altDistance, speed, wheelRpm, load, slope, lrbalance;
+    double hr, watts, altWatts, altDistance, trainerSpeed, wheelRpm, load, slope, lrbalance;
     double cadence;      // in rpm
     double smo2, thb;
     double lte, rte, lps, rps; // torque efficiency and pedal smoothness
@@ -178,6 +182,8 @@ private:
     std::chrono::high_resolution_clock::time_point wheelRpmSampleTime;
 
     // derived data
+    double speed; // used as: useSimulatedSpeed ? simulatedSpeed : trainerSpeed
+    double simulatedSpeed;
     double distance;
     double routeDistance;
     double distanceRemaining;

@@ -219,8 +219,8 @@ void ANT::setWheelRpm(float x) {
 
     // devConf will be NULL if we are are running the add device wizard
     // we can default to the global setting
-    if (devConf) telemetry.setSpeed(x * devConf->wheelSize / 1000 * 60 / 1000);
-    else telemetry.setSpeed(x * appsettings->cvalue(trainAthlete, GC_WHEELSIZE, 2100).toInt() / 1000 * 60 / 1000);
+    if (devConf) telemetry.setTrainerSpeed(x * devConf->wheelSize / 1000 * 60 / 1000);
+    else telemetry.setTrainerSpeed(x * appsettings->cvalue(trainAthlete, GC_WHEELSIZE, 2100).toInt() / 1000 * 60 / 1000);
 }
 
 void ANT::setHb(double smo2, double thb)

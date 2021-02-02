@@ -250,7 +250,7 @@ BT40Controller::getCalibrationSlope() {
 void
 BT40Controller::setWheelRpm(double wrpm) {
     telemetry.setWheelRpm(wrpm, true); // record time sample for new rpm data
-    telemetry.setSpeed(wrpm * wheelSize / 1000.0 * 60.0 / 1000.0);
+    telemetry.setTrainerSpeed(wrpm * wheelSize / 1000.0 * 60.0 / 1000.0);
 }
 
 void BT40Controller::setLoad(double l)

@@ -1590,7 +1590,7 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
                     // (and F3 button press for Computrainer)
 
                     Devices[dev].controller->getRealtimeData(local);
-                    calibrationCurrentSpeed = local.getSpeed();
+                    calibrationCurrentSpeed = local.getTrainerSpeed();
                     calibrationTorque = local.getTorque();
                     calibrationCadence = local.getCadence();
 
@@ -1675,7 +1675,7 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
                 if (dev == bpmTelemetry) rtData.setHr(local.getHr());
                 if (dev == rpmTelemetry) rtData.setCadence(local.getCadence());
                 if (dev == kphTelemetry) {
-                    rtData.setSpeed(local.getSpeed());
+                    rtData.setTrainerSpeed(local.getTrainerSpeed());
                     rtData.setDistance(local.getDistance());
                     rtData.setRouteDistance(local.getRouteDistance());
                     rtData.setDistanceRemaining(local.getDistanceRemaining());
@@ -1705,15 +1705,15 @@ void TrainSidebar::guiUpdate()           // refreshes the telemetry
             // If simulated speed is *not* checked then you get speed reported by
             // trainer which in ergo mode will be dictated by your gear and cadence,
             // and in slope mode is whatever the trainer happens to implement.
+            BicycleSimState newState(rtData);
+            SpeedDistance ret = bicycle.SampleSpeed(newState);
+            rtData.setSimulatedSpeed(ret.v);
+
             if (useSimulatedSpeed) {
-                BicycleSimState newState(rtData);
-                SpeedDistance ret = bicycle.SampleSpeed(newState);
-
                 rtData.setSpeed(ret.v);
-
-                displaySpeed = ret.v;
                 distanceTick = ret.d;
             } else {
+                rtData.setSpeed(rtData.getTrainerSpeed());
                 distanceTick = displaySpeed / (5 * 3600); // assumes 200ms refreshrate
             }
 

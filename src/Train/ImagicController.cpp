@@ -100,7 +100,7 @@ ImagicController::getRealtimeData(RealtimeData &rtData)
     rtData.setWatts(Power);
     rtData.setHr(HeartRate);
     rtData.setCadence(Cadence);
-    rtData.setSpeed(Speed);
+    rtData.setTrainerSpeed(Speed);
 
 
     // For now, all the power calculations are contained
